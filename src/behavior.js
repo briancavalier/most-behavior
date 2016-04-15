@@ -1,52 +1,72 @@
 /** @license MIT License (c) copyright 2016 original author or authors */
 
-import { curry2, curry3 } from '@most/prelude'
-
 export const constant = x => new Constant(x)
 
 class Constant {
-  constructor (x) {
-    this._value = x
+  constructor (value) {
+    this.value = value
   }
 
-  value (t) {
-    return this._value
+  next (t) {
+    return this
   }
 }
 
-export const map = curry2((f, behavior) => new Map(f, behavior))
+export const map = (f, behavior) => new Map(f(behavior.value), f, behavior)
 
 class Map {
-  constructor (f, behavior) {
+  constructor (value, f, behavior) {
+    this.value = value
     this.f = f
     this.behavior = behavior
   }
 
-  value (t) {
-    const f = this.f
-    return f(this.behavior.value(t))
+  next (t) {
+    return map(this.f, this.behavior.next(t))
   }
 }
 
-export const liftA2 = curry3((f, b1, b2) => new LiftA2(f, b1, b2))
-export const ap = curry2((bf, bx) => new LiftA2(apply, bf, bx))
-const apply = (f, x) => f(x)
+export const liftA2 = (f, b1, b2) => new LiftA2(f(b1.value, b2.value), f, b1, b2)
+export const ap = (bf, bx) => liftA2(apply, bf, bx)
 
 class LiftA2 {
-  constructor (f, b1, b2) {
+  constructor (value, f, b1, b2) {
+    this.value = value
     this.f = f
-    this.behavior1 = b1
-    this.behavior2 = b2
+    this.b1 = b1
+    this.b2 = b2
   }
 
-  value (t) {
-    const f = this.f
-    return f(this.behavior1.value(t), this.behavior2.value(t))
+  next (t) {
+    return liftA2(this.f, this.b1.next(t), this.b2.next(t))
   }
 }
 
-export const sample = curry2((behavior, stream) =>
-  stream.loop(stepSample, behavior))
+export const integralWith = (f, w, a, behavior) => runIntegralWith(f, w, a, behavior, 0)
+const runIntegralWith = (f, w, a, behavior, t) => new Integral(a, f, w, behavior, t)
 
-const stepSample = (behavior, { time, value }) =>
-  ({ seed: behavior, value: behavior.value(time) })
+class Integral {
+  constructor (value, f, w, behavior, t0) {
+    this.value = value
+    this.f = f
+    this.w = w
+    this.behavior = behavior
+    this.t0 = t0
+  }
+
+  next (t) {
+    const wn = this.w.next(t)
+    const bn = this.behavior.next(t)
+    const f = this.f
+    const value = f(wn.value, this.value, bn.value, t - this.t0)
+    return runIntegralWith(f, wn, value, bn, t)
+  }
+}
+
+export const sample = (behavior, stream) =>
+  stream.timestamp().scan(stepSample, behavior).map(toValue)
+
+const stepSample = (behavior, { time }) => behavior.next(time)
+const toValue = ({ value }) => value
+
+const apply = (f, x) => f(x)

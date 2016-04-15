@@ -1,369 +1,145 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
+var _most = require('most');
+
 var _index = require('../../src/index');
 
-var _domEvent = require('@most/dom-event');
+var _animationFrames = require('../../src/animationFrames');
 
-var _prelude = require('@most/prelude');
+var _animationFrames2 = _interopRequireDefault(_animationFrames);
 
-// Display the result of adding two inputs.
-// The result is reactive and updates whenever *either* input changes.
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var container = document.querySelector('.container');
-var xInput = document.querySelector('.x');
-var yInput = document.querySelector('.y');
-var resultNode = document.querySelector('.result');
+var maxSpeed = 3.0; // pixels/ms
 
-var renderResult = function renderResult(result) {
-  resultNode.textContent = result;
+var getBounds = function getBounds(window) {
+  var w2 = Math.floor(window.innerWidth / 2);
+  var h2 = Math.floor(window.innerHeight / 2);
+  return { x1: -w2, x2: w2, y1: -h2, y2: h2 };
 };
 
-var numberValue = (0, _prelude.compose)((0, _index.map)(Number), _index.inputValue);
-var add = (0, _index.liftA2)(function (x, y) {
-  return x + y;
-});
+var createDot = function createDot(parent) {
+  var dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.textContent = '•';
+  dot.style.fontSize = 50.0 + Math.random() * 200.0 + '%';
+  dot.style.color = randomColor();
+  parent.appendChild(dot);
+  return dot;
+};
 
-// x represents the current value of xInput as a number
-var x = numberValue(xInput);
+// Generate a random color
+var randomColor = function randomColor() {
+  return 'hsl(' + randInt(0, 360) + ',' + randInt(20, 80) + '%,' + randInt(20, 80) + '%)';
+};
 
-// x represents the current value of yInput as a number
-var y = numberValue(yInput);
+// Generate a random int between low and high
+var randInt = function randInt(low, high) {
+  return Math.floor(Math.random() * (high - low)) + low;
+};
 
-// result is always the value of adding x and y
-var result = add(x, y);
+var createDots = function createDots(parent, n) {
+  var dots = new Array(n);
+  for (var i = 0; i < n; ++i) {
+    dots[i] = createDot(parent);
+  }
+  return dots;
+};
 
-// Observe the result value by rendering it to the resultNode
-(0, _index.sample)(result, (0, _domEvent.input)(container)).observe(renderResult);
+var sign = function sign() {
+  return Math.random() >= 0.5 ? 1 : -1;
+};
 
-},{"../../src/index":72,"@most/dom-event":2,"@most/prelude":4}],2:[function(require,module,exports){
-(function (global, factory) {
-    if (typeof define === "function" && define.amd) {
-        define('@most/dom-event', ['exports', 'most'], factory);
-    } else if (typeof exports !== "undefined") {
-        factory(exports, require('most'));
-    } else {
-        var mod = {
-            exports: {}
-        };
-        factory(mod.exports, global.most);
-        global.mostDomEvent = mod.exports;
-    }
-})(this, function (exports, _most) {
-    'use strict';
+var randomVelocity = function randomVelocity() {
+  return {
+    x: Math.random() * maxSpeed,
+    y: Math.random() * maxSpeed
+  };
+};
+var randomDotState = function randomDotState() {
+  return { x: 0, y: 0, xd: sign(), yd: sign() };
+};
 
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.touchcancel = exports.touchmove = exports.touchend = exports.touchstart = exports.pointerleave = exports.pointerout = exports.pointerenter = exports.pointerover = exports.pointermove = exports.pointerup = exports.pointerdown = exports.unload = exports.load = exports.popstate = exports.hashchange = exports.error = exports.scroll = exports.resize = exports.contextmenu = exports.input = exports.keyup = exports.keypress = exports.keydown = exports.submit = exports.select = exports.change = exports.mouseleave = exports.mouseout = exports.mouseenter = exports.mouseover = exports.mousemove = exports.mouseup = exports.mousedown = exports.dblclick = exports.click = exports.focusout = exports.focusin = exports.focus = exports.blur = exports.domEvent = undefined;
+var moveDots = function moveDots(_ref, dots, velocity, dt) {
+  var speed = _ref.speed;
+  var bounds = _ref.bounds;
+  return dots.map(function (dot, i) {
+    return moveDot(dot, speed, bounds, velocity[i], dt);
+  });
+};
 
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
+var moveDot = function moveDot(dot, speed, _ref2, vel, dt) {
+  var x1 = _ref2.x1;
+  var x2 = _ref2.x2;
+  var y1 = _ref2.y1;
+  var y2 = _ref2.y2;
+  // eslint-disable-line complexity
+  var xd = void 0;
+  var x = void 0;
+  if (dot.x < x1) {
+    x = x1;
+    xd = -dot.xd;
+  } else if (dot.x > x2) {
+    x = x2;
+    xd = -dot.xd;
+  } else {
+    xd = dot.xd;
+    x = dot.x + xd * dt * vel.x * speed;
+  }
 
-    var _createClass = function () {
-        function defineProperties(target, props) {
-            for (var i = 0; i < props.length; i++) {
-                var descriptor = props[i];
-                descriptor.enumerable = descriptor.enumerable || false;
-                descriptor.configurable = true;
-                if ("value" in descriptor) descriptor.writable = true;
-                Object.defineProperty(target, descriptor.key, descriptor);
-            }
-        }
+  var yd = void 0;
+  var y = void 0;
+  if (dot.y < y1) {
+    y = y1;
+    yd = -dot.yd;
+  } else if (dot.y > y2) {
+    y = y2;
+    yd = -dot.yd;
+  } else {
+    yd = dot.yd;
+    y = dot.y + yd * dt * vel.y * speed;
+  }
 
-        return function (Constructor, protoProps, staticProps) {
-            if (protoProps) defineProperties(Constructor.prototype, protoProps);
-            if (staticProps) defineProperties(Constructor, staticProps);
-            return Constructor;
-        };
-    }();
+  return { x: x, y: y, xd: xd, yd: yd };
+};
 
-    var domEvent = function domEvent(event, node) {
-        var capture = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
-        return new _most.Stream(new DomEvent(event, node, capture));
-    };
+var updateDots = function updateDots(_ref3) {
+  var dots = _ref3.dots;
+  var pos = _ref3.pos;
 
-    var blur = function blur(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('blur', node, capture);
-    };
+  console.log(dots, pos);
+  for (var i = 0, p; i < dots.length; ++i) {
+    p = pos[i];
+    dots[i].style.transform = 'translate3d(' + p.x + 'px,' + p.y + 'px,0)';
+  }
+};
 
-    var focus = function focus(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('focus', node, capture);
-    };
+var dots = function dots(n) {
+  var dots = createDots(document.body, n);
+  var position = dots.map(randomDotState);
 
-    var focusin = function focusin(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('focusin', node, capture);
-    };
+  var speed = (0, _index.map)(Number, (0, _index.inputValue)(document.getElementById('speed')));
 
-    var focusout = function focusout(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('focusout', node, capture);
-    };
+  var bounds = (0, _index.map)(getBounds, (0, _index.constant)(window));
 
-    var click = function click(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('click', node, capture);
-    };
+  var velocity = (0, _index.constant)(dots.map(randomVelocity));
+  var state = (0, _index.liftA2)(function (speed, bounds) {
+    return { speed: speed, bounds: bounds };
+  }, speed, bounds);
 
-    var dblclick = function dblclick(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('dblclick', node, capture);
-    };
+  var pos = (0, _index.integralWith)(moveDots, state, position, velocity);
+  var world = (0, _index.liftA2)(function (dots, pos) {
+    return { dots: dots, pos: pos };
+  }, (0, _index.constant)(dots), pos);
 
-    var mousedown = function mousedown(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mousedown', node, capture);
-    };
+  var rate = (0, _animationFrames2.default)();
+  return (0, _index.sample)(world, rate);
+};
 
-    var mouseup = function mouseup(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mouseup', node, capture);
-    };
+(0, _most.observe)(updateDots, dots(1000));
 
-    var mousemove = function mousemove(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mousemove', node, capture);
-    };
-
-    var mouseover = function mouseover(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mouseover', node, capture);
-    };
-
-    var mouseenter = function mouseenter(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mouseenter', node, capture);
-    };
-
-    var mouseout = function mouseout(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mouseout', node, capture);
-    };
-
-    var mouseleave = function mouseleave(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('mouseleave', node, capture);
-    };
-
-    var change = function change(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('change', node, capture);
-    };
-
-    var select = function select(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('select', node, capture);
-    };
-
-    var submit = function submit(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('submit', node, capture);
-    };
-
-    var keydown = function keydown(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('keydown', node, capture);
-    };
-
-    var keypress = function keypress(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('keypress', node, capture);
-    };
-
-    var keyup = function keyup(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('keyup', node, capture);
-    };
-
-    var input = function input(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('input', node, capture);
-    };
-
-    var contextmenu = function contextmenu(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('contextmenu', node, capture);
-    };
-
-    var resize = function resize(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('resize', node, capture);
-    };
-
-    var scroll = function scroll(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('scroll', node, capture);
-    };
-
-    var error = function error(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('error', node, capture);
-    };
-
-    var hashchange = function hashchange(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('hashchange', node, capture);
-    };
-
-    var popstate = function popstate(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('popstate', node, capture);
-    };
-
-    var load = function load(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('load', node, capture);
-    };
-
-    var unload = function unload(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('unload', node, capture);
-    };
-
-    var pointerdown = function pointerdown(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointerdown', node, capture);
-    };
-
-    var pointerup = function pointerup(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointerup', node, capture);
-    };
-
-    var pointermove = function pointermove(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointermove', node, capture);
-    };
-
-    var pointerover = function pointerover(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointerover', node, capture);
-    };
-
-    var pointerenter = function pointerenter(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointerenter', node, capture);
-    };
-
-    var pointerout = function pointerout(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointerout', node, capture);
-    };
-
-    var pointerleave = function pointerleave(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('pointerleave', node, capture);
-    };
-
-    var touchstart = function touchstart(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('touchstart', node, capture);
-    };
-
-    var touchend = function touchend(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('touchend', node, capture);
-    };
-
-    var touchmove = function touchmove(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('touchmove', node, capture);
-    };
-
-    var touchcancel = function touchcancel(node) {
-        var capture = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-        return domEvent('touchcancel', node, capture);
-    };
-
-    var DomEvent = function () {
-        function DomEvent(event, node, capture) {
-            _classCallCheck(this, DomEvent);
-
-            this.event = event;
-            this.node = node;
-            this.capture = capture;
-        }
-
-        _createClass(DomEvent, [{
-            key: 'run',
-            value: function run(sink, scheduler) {
-                var _this = this;
-
-                var send = function send(e) {
-                    return tryEvent(scheduler.now(), e, sink);
-                };
-
-                var dispose = function dispose() {
-                    return _this.node.removeEventListener(_this.event, send, _this.capture);
-                };
-
-                this.node.addEventListener(this.event, send, this.capture);
-                return {
-                    dispose: dispose
-                };
-            }
-        }]);
-
-        return DomEvent;
-    }();
-
-    function tryEvent(t, x, sink) {
-        try {
-            sink.event(t, x);
-        } catch (e) {
-            sink.error(t, e);
-        }
-    }
-
-    exports.domEvent = domEvent;
-    exports.blur = blur;
-    exports.focus = focus;
-    exports.focusin = focusin;
-    exports.focusout = focusout;
-    exports.click = click;
-    exports.dblclick = dblclick;
-    exports.mousedown = mousedown;
-    exports.mouseup = mouseup;
-    exports.mousemove = mousemove;
-    exports.mouseover = mouseover;
-    exports.mouseenter = mouseenter;
-    exports.mouseout = mouseout;
-    exports.mouseleave = mouseleave;
-    exports.change = change;
-    exports.select = select;
-    exports.submit = submit;
-    exports.keydown = keydown;
-    exports.keypress = keypress;
-    exports.keyup = keyup;
-    exports.input = input;
-    exports.contextmenu = contextmenu;
-    exports.resize = resize;
-    exports.scroll = scroll;
-    exports.error = error;
-    exports.hashchange = hashchange;
-    exports.popstate = popstate;
-    exports.load = load;
-    exports.unload = unload;
-    exports.pointerdown = pointerdown;
-    exports.pointerup = pointerup;
-    exports.pointermove = pointermove;
-    exports.pointerover = pointerover;
-    exports.pointerenter = pointerenter;
-    exports.pointerout = pointerout;
-    exports.pointerleave = pointerleave;
-    exports.touchstart = touchstart;
-    exports.touchend = touchend;
-    exports.touchmove = touchmove;
-    exports.touchcancel = touchcancel;
-});
-
-},{"most":68}],3:[function(require,module,exports){
+},{"../../src/animationFrames":69,"../../src/index":72,"most":67}],2:[function(require,module,exports){
 (function (global, factory) {
   if (typeof define === "function" && define.amd) {
     define('@most/multicast', ['exports', '@most/prelude'], factory);
@@ -547,7 +323,7 @@ var result = add(x, y);
   exports.default = multicast;
 });
 
-},{"@most/prelude":4}],4:[function(require,module,exports){
+},{"@most/prelude":3}],3:[function(require,module,exports){
 (function (global, factory) {
   if (typeof define === "function" && define.amd) {
     define('@most/prelude', ['exports'], factory);
@@ -828,7 +604,7 @@ var result = add(x, y);
   exports.curry3 = curry3;
 });
 
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -906,7 +682,7 @@ LinkedList.prototype.dispose = function() {
 	return Promise.all(promises);
 };
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -917,7 +693,7 @@ function isPromise(p) {
 	return p !== null && typeof p === 'object' && typeof p.then === 'function';
 }
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -984,7 +760,7 @@ function copy(src, srcIndex, dst, dstIndex, len) {
 }
 
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -995,7 +771,7 @@ function Stream(source) {
 	this.source = source;
 }
 
-},{}],9:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1162,7 +938,7 @@ function isArrayLike(x){
    return x != null && typeof x.length === 'number' && typeof x !== 'function';
 }
 
-},{}],10:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1245,7 +1021,7 @@ AccumulateSink.prototype.end = function(t) {
 	this.sink.end(t, this.value);
 };
 
-},{"../Stream":8,"../base":9,"../runSource":44,"../sink/Pipe":53,"./build":12}],11:[function(require,module,exports){
+},{"../Stream":7,"../base":8,"../runSource":43,"../sink/Pipe":52,"./build":11}],10:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1269,7 +1045,7 @@ function ap(fs, xs) {
 	return combine(apply, fs, xs);
 }
 
-},{"../base":9,"./combine":13}],12:[function(require,module,exports){
+},{"../base":8,"./combine":12}],11:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1314,7 +1090,7 @@ function cycle(stream) {
 	}, stream);
 }
 
-},{"../source/core":57,"./continueWith":15}],13:[function(require,module,exports){
+},{"../source/core":56,"./continueWith":14}],12:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1418,7 +1194,7 @@ CombineSink.prototype.end = function(t, indexedValue) {
 	}
 };
 
-},{"../Stream":8,"../base":9,"../disposable/dispose":37,"../invoke":42,"../sink/IndexSink":51,"../sink/Pipe":53,"../source/core":57,"./transform":32}],14:[function(require,module,exports){
+},{"../Stream":7,"../base":8,"../disposable/dispose":36,"../invoke":41,"../sink/IndexSink":50,"../sink/Pipe":52,"../source/core":56,"./transform":31}],13:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1443,7 +1219,7 @@ function concatMap(f, stream) {
 	return mergeConcurrently(1, map(f, stream));
 }
 
-},{"./mergeConcurrently":23,"./transform":32}],15:[function(require,module,exports){
+},{"./mergeConcurrently":22,"./transform":31}],14:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1512,7 +1288,7 @@ ContinueWithSink.prototype.dispose = function() {
 	return this.disposable.dispose();
 };
 
-},{"../Promise":6,"../Stream":8,"../disposable/dispose":37,"../sink/Pipe":53}],16:[function(require,module,exports){
+},{"../Promise":5,"../Stream":7,"../disposable/dispose":36,"../sink/Pipe":52}],15:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1567,7 +1343,7 @@ DelaySink.prototype.end = function(t, x) {
 
 DelaySink.prototype.error = Sink.prototype.error;
 
-},{"../Stream":8,"../disposable/dispose":37,"../scheduler/PropagateTask":45,"../sink/Pipe":53}],17:[function(require,module,exports){
+},{"../Stream":7,"../disposable/dispose":36,"../scheduler/PropagateTask":44,"../sink/Pipe":52}],16:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1654,7 +1430,7 @@ RecoverWithSink.prototype.dispose = function() {
 	return this.disposable.dispose();
 };
 
-},{"../Stream":8,"../base":9,"../disposable/dispose":37,"../source/ValueSource":56,"../source/tryEvent":66}],18:[function(require,module,exports){
+},{"../Stream":7,"../base":8,"../disposable/dispose":36,"../source/ValueSource":55,"../source/tryEvent":65}],17:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1730,7 +1506,7 @@ function same(a, b) {
 	return a === b;
 }
 
-},{"../Stream":8,"../fusion/Filter":39,"../sink/Pipe":53}],19:[function(require,module,exports){
+},{"../Stream":7,"../fusion/Filter":38,"../sink/Pipe":52}],18:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1762,7 +1538,7 @@ function join(stream) {
 	return mergeConcurrently(Infinity, stream);
 }
 
-},{"./mergeConcurrently":23,"./transform":32}],20:[function(require,module,exports){
+},{"./mergeConcurrently":22,"./transform":31}],19:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1874,7 +1650,7 @@ DebounceSink.prototype._clearTimer = function() {
 	return true;
 };
 
-},{"../Stream":8,"../disposable/dispose":37,"../scheduler/PropagateTask":45,"../sink/Pipe":53}],21:[function(require,module,exports){
+},{"../Stream":7,"../disposable/dispose":36,"../scheduler/PropagateTask":44,"../sink/Pipe":52}],20:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -1927,7 +1703,7 @@ LoopSink.prototype.end = function(t) {
 	this.sink.end(t, this.seed);
 };
 
-},{"../Stream":8,"../sink/Pipe":53}],22:[function(require,module,exports){
+},{"../Stream":7,"../sink/Pipe":52}],21:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2025,7 +1801,7 @@ MergeSink.prototype.end = function(t, indexedValue) {
 	}
 };
 
-},{"../Stream":8,"../base":9,"../disposable/dispose":37,"../sink/IndexSink":51,"../sink/Pipe":53,"../source/core":57}],23:[function(require,module,exports){
+},{"../Stream":7,"../base":8,"../disposable/dispose":36,"../sink/IndexSink":50,"../sink/Pipe":52,"../source/core":56}],22:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2135,7 +1911,7 @@ Inner.prototype.dispose = function() {
 	return this.disposable.dispose();
 };
 
-},{"../LinkedList":5,"../Stream":8,"../disposable/dispose":37}],24:[function(require,module,exports){
+},{"../LinkedList":4,"../Stream":7,"../disposable/dispose":36}],23:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2167,7 +1943,7 @@ function drain(stream) {
 	return runSource.withDefaultScheduler(noop, stream.source);
 }
 
-},{"../base":9,"../runSource":44}],25:[function(require,module,exports){
+},{"../base":8,"../runSource":43}],24:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2259,7 +2035,7 @@ AwaitSink.prototype._end = function(x) {
 	return Promise.resolve(x).then(this._endBound);
 };
 
-},{"../Stream":8,"../fatalError":38,"../source/core":57}],26:[function(require,module,exports){
+},{"../Stream":7,"../fatalError":37,"../source/core":56}],25:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2372,7 +2148,7 @@ function getValue(hold) {
 	return hold.value;
 }
 
-},{"../Stream":8,"../base":9,"../disposable/dispose":37,"../invoke":42,"../sink/Pipe":53}],27:[function(require,module,exports){
+},{"../Stream":7,"../base":8,"../disposable/dispose":36,"../invoke":41,"../sink/Pipe":52}],26:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2536,7 +2312,7 @@ SkipWhileSink.prototype.event = function(t, x) {
 	this.sink.event(t, x);
 };
 
-},{"../Stream":8,"../disposable/dispose":37,"../sink/Pipe":53,"../source/core":57}],28:[function(require,module,exports){
+},{"../Stream":7,"../disposable/dispose":36,"../sink/Pipe":52,"../source/core":56}],27:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2565,7 +2341,7 @@ function switchLatest(stream) {
 	}
 }
 
-},{"../Stream":8,"./mergeConcurrently":23,"./timeslice":29,"./transform":32,"@most/multicast":3}],29:[function(require,module,exports){
+},{"../Stream":7,"./mergeConcurrently":22,"./timeslice":28,"./transform":31,"@most/multicast":2}],28:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2682,7 +2458,7 @@ UpperBound.prototype.dispose = function() {
 	return this.disposable.dispose();
 };
 
-},{"../Stream":8,"../base":9,"../combinator/flatMap":19,"../disposable/dispose":37,"../sink/Pipe":53}],30:[function(require,module,exports){
+},{"../Stream":7,"../base":8,"../combinator/flatMap":18,"../disposable/dispose":36,"../sink/Pipe":52}],29:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2715,7 +2491,7 @@ TimestampSink.prototype.event = function(t, x) {
 	this.sink.event(t, { time: t, value: x });
 };
 
-},{"../Stream":8,"../sink/Pipe":53}],31:[function(require,module,exports){
+},{"../Stream":7,"../sink/Pipe":52}],30:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2840,7 +2616,7 @@ LegacyTxAdapter.prototype.getResult = function(x) {
 	return x.value;
 };
 
-},{"../Stream":8}],32:[function(require,module,exports){
+},{"../Stream":7}],31:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -2888,7 +2664,7 @@ function tap(f, stream) {
 	}, stream);
 }
 
-},{"../Stream":8,"../fusion/Map":41}],33:[function(require,module,exports){
+},{"../Stream":7,"../fusion/Map":40}],32:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3023,7 +2799,7 @@ function ready(buffers) {
 	return true;
 }
 
-},{"../Queue":7,"../Stream":8,"../base":9,"../disposable/dispose":37,"../invoke":42,"../sink/IndexSink":51,"../sink/Pipe":53,"../source/core":57,"./transform":32}],34:[function(require,module,exports){
+},{"../Queue":6,"../Stream":7,"../base":8,"../disposable/dispose":36,"../invoke":41,"../sink/IndexSink":50,"../sink/Pipe":52,"../source/core":56,"./transform":31}],33:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3042,7 +2818,7 @@ function runTask(task) {
 	}
 }
 
-},{}],35:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3064,7 +2840,7 @@ Disposable.prototype.dispose = function() {
 	return this._dispose(this._data);
 };
 
-},{}],36:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3108,7 +2884,7 @@ SettableDisposable.prototype.dispose = function() {
 	return this.result;
 };
 
-},{}],37:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3237,7 +3013,7 @@ function memoized(disposable) {
 	return { disposed: false, disposable: disposable, value: void 0 };
 }
 
-},{"../Promise":6,"../base":9,"./Disposable":35,"./SettableDisposable":36}],38:[function(require,module,exports){
+},{"../Promise":5,"../base":8,"./Disposable":34,"./SettableDisposable":35}],37:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3250,7 +3026,7 @@ function fatalError (e) {
 	}, 0);
 }
 
-},{}],39:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3301,7 +3077,7 @@ function and(p, q) {
 	};
 }
 
-},{"../sink/Pipe":53}],40:[function(require,module,exports){
+},{"../sink/Pipe":52}],39:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3335,7 +3111,7 @@ FilterMapSink.prototype.event = function(t, x) {
 FilterMapSink.prototype.end = Pipe.prototype.end;
 FilterMapSink.prototype.error = Pipe.prototype.error;
 
-},{"../sink/Pipe":53}],41:[function(require,module,exports){
+},{"../sink/Pipe":52}],40:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3392,7 +3168,7 @@ MapSink.prototype.event = function(t, x) {
 	this.sink.event(t, f(x));
 };
 
-},{"../base":9,"../sink/Pipe":53,"./Filter":39,"./FilterMap":40}],42:[function(require,module,exports){
+},{"../base":8,"../sink/Pipe":52,"./Filter":38,"./FilterMap":39}],41:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3413,7 +3189,7 @@ function invoke(f, args) {
 	}
 }
 
-},{}],43:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3446,7 +3222,7 @@ function makeIterable(f, o) {
 	return o;
 }
 
-},{}],44:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3475,7 +3251,7 @@ function runSource(f, source, scheduler, resolve, reject) {
 	disposable.setDisposable(source.run(observer, scheduler));
 }
 
-},{"./disposable/dispose":37,"./scheduler/defaultScheduler":47,"./sink/Observer":52}],45:[function(require,module,exports){
+},{"./disposable/dispose":36,"./scheduler/defaultScheduler":46,"./sink/Observer":51}],44:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3533,7 +3309,7 @@ function end(t, x, sink) {
 	sink.end(t, x);
 }
 
-},{"../fatalError":38}],46:[function(require,module,exports){
+},{"../fatalError":37}],45:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3757,7 +3533,7 @@ function newTimeslot(t, events) {
 	return { time: t, events: events };
 }
 
-},{"./../base":9}],47:[function(require,module,exports){
+},{"./../base":8}],46:[function(require,module,exports){
 (function (process){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
@@ -3773,7 +3549,7 @@ var isNode = typeof process === 'object'
 module.exports = new Scheduler(isNode ? nodeTimer : setTimeoutTimer);
 
 }).call(this,require('_process'))
-},{"./Scheduler":46,"./nodeTimer":48,"./timeoutTimer":49,"_process":69}],48:[function(require,module,exports){
+},{"./Scheduler":45,"./nodeTimer":47,"./timeoutTimer":48,"_process":68}],47:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3819,7 +3595,7 @@ module.exports = {
 	}
 };
 
-},{"../defer":34}],49:[function(require,module,exports){
+},{"../defer":33}],48:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3836,7 +3612,7 @@ module.exports = {
 	}
 };
 
-},{}],50:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3925,7 +3701,7 @@ ErrorTask.prototype.error = function(e) {
 	throw e;
 };
 
-},{"../defer":34}],51:[function(require,module,exports){
+},{"../defer":33}],50:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -3967,7 +3743,7 @@ IndexSink.prototype.end = function(t, x) {
 
 IndexSink.prototype.error = Sink.prototype.error;
 
-},{"./Pipe":53}],52:[function(require,module,exports){
+},{"./Pipe":52}],51:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4013,7 +3789,7 @@ function disposeThen(end, error, disposable, x) {
 	}, error);
 }
 
-},{}],53:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4042,7 +3818,7 @@ Pipe.prototype.error = function(t, e) {
 	return this.sink.error(t, e);
 };
 
-},{}],54:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4089,7 +3865,7 @@ function disposeEventEmitter(info) {
 	target.source.removeListener(target.event, info.addEvent);
 }
 
-},{"../disposable/dispose":37,"../sink/DeferredSink":50,"./tryEvent":66}],55:[function(require,module,exports){
+},{"../disposable/dispose":36,"../sink/DeferredSink":49,"./tryEvent":65}],54:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4121,7 +3897,7 @@ function disposeEventTarget(info) {
 	target.source.removeEventListener(target.event, info.addEvent, target.capture);
 }
 
-},{"../disposable/dispose":37,"./tryEvent":66}],56:[function(require,module,exports){
+},{"../disposable/dispose":36,"./tryEvent":65}],55:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4147,7 +3923,7 @@ ValueProducer.prototype.dispose = function() {
 	return this.task.cancel();
 };
 
-},{"../scheduler/PropagateTask":45}],57:[function(require,module,exports){
+},{"../scheduler/PropagateTask":44}],56:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4214,7 +3990,7 @@ NeverSource.prototype.run = function() {
 
 var NEVER = new Stream(new NeverSource());
 
-},{"../Stream":8,"../disposable/dispose":37,"../scheduler/PropagateTask":45,"../source/ValueSource":56}],58:[function(require,module,exports){
+},{"../Stream":7,"../disposable/dispose":36,"../scheduler/PropagateTask":44,"../source/ValueSource":55}],57:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4292,7 +4068,7 @@ Subscription.prototype.dispose = function() {
 	}
 };
 
-},{"../Stream":8,"../sink/DeferredSink":50,"./tryEvent":66,"@most/multicast":3}],59:[function(require,module,exports){
+},{"../Stream":7,"../sink/DeferredSink":49,"./tryEvent":65,"@most/multicast":2}],58:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4316,7 +4092,7 @@ function from(a) {
 	throw new TypeError('not iterable: ' + a);
 }
 
-},{"../base":9,"../iterable":43,"./fromArray":60,"./fromIterable":62}],60:[function(require,module,exports){
+},{"../base":8,"../iterable":42,"./fromArray":59,"./fromIterable":61}],59:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4364,7 +4140,7 @@ function produce(task, array, sink) {
 	}
 }
 
-},{"../Stream":8,"../scheduler/PropagateTask":45}],61:[function(require,module,exports){
+},{"../Stream":7,"../scheduler/PropagateTask":44}],60:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4400,7 +4176,7 @@ function fromEvent(event, source /*, useCapture = false */) {
 	return new Stream(s);
 }
 
-},{"../Stream":8,"./EventEmitterSource":54,"./EventTargetSource":55,"@most/multicast":3}],62:[function(require,module,exports){
+},{"../Stream":7,"./EventEmitterSource":53,"./EventTargetSource":54,"@most/multicast":2}],61:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4445,7 +4221,7 @@ function runProducer(t, producer, sink) {
 	producer.scheduler.asap(producer.task);
 }
 
-},{"../Stream":8,"../iterable":43,"../scheduler/PropagateTask":45}],63:[function(require,module,exports){
+},{"../Stream":7,"../iterable":42,"../scheduler/PropagateTask":44}],62:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2014 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4517,7 +4293,7 @@ Generate.prototype.dispose = function() {
 	this.active = false;
 };
 
-},{"../Stream":8,"../base":9}],64:[function(require,module,exports){
+},{"../Stream":7,"../base":8}],63:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4587,7 +4363,7 @@ function continueIterate(iterate, x) {
 	return !iterate.active ? iterate.value : stepIterate(iterate, x);
 }
 
-},{"../Stream":8}],65:[function(require,module,exports){
+},{"../Stream":7}],64:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4627,7 +4403,7 @@ function emit(t, x, sink) {
 	sink.event(t, x);
 }
 
-},{"../Stream":8,"../disposable/dispose":37,"../scheduler/PropagateTask":45,"@most/multicast":3}],66:[function(require,module,exports){
+},{"../Stream":7,"../disposable/dispose":36,"../scheduler/PropagateTask":44,"@most/multicast":2}],65:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4651,7 +4427,7 @@ function tryEnd(t, x, sink) {
 	}
 }
 
-},{}],67:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -4726,7 +4502,7 @@ function continueUnfold(unfold, tuple) {
 	return stepUnfold(unfold, tuple.seed);
 }
 
-},{"../Stream":8}],68:[function(require,module,exports){
+},{"../Stream":7}],67:[function(require,module,exports){
 /** @license MIT License (c) copyright 2010-2016 original author or authors */
 /** @author Brian Cavalier */
 /** @author John Hann */
@@ -5408,7 +5184,7 @@ Stream.prototype.multicast = function() {
 	return multicast(this);
 };
 
-},{"./lib/Stream":8,"./lib/base":9,"./lib/combinator/accumulate":10,"./lib/combinator/applicative":11,"./lib/combinator/build":12,"./lib/combinator/combine":13,"./lib/combinator/concatMap":14,"./lib/combinator/continueWith":15,"./lib/combinator/delay":16,"./lib/combinator/errors":17,"./lib/combinator/filter":18,"./lib/combinator/flatMap":19,"./lib/combinator/limit":20,"./lib/combinator/loop":21,"./lib/combinator/merge":22,"./lib/combinator/mergeConcurrently":23,"./lib/combinator/observe":24,"./lib/combinator/promises":25,"./lib/combinator/sample":26,"./lib/combinator/slice":27,"./lib/combinator/switch":28,"./lib/combinator/timeslice":29,"./lib/combinator/timestamp":30,"./lib/combinator/transduce":31,"./lib/combinator/transform":32,"./lib/combinator/zip":33,"./lib/source/core":57,"./lib/source/create":58,"./lib/source/from":59,"./lib/source/fromEvent":61,"./lib/source/generate":63,"./lib/source/iterate":64,"./lib/source/periodic":65,"./lib/source/unfold":67,"@most/multicast":3}],69:[function(require,module,exports){
+},{"./lib/Stream":7,"./lib/base":8,"./lib/combinator/accumulate":9,"./lib/combinator/applicative":10,"./lib/combinator/build":11,"./lib/combinator/combine":12,"./lib/combinator/concatMap":13,"./lib/combinator/continueWith":14,"./lib/combinator/delay":15,"./lib/combinator/errors":16,"./lib/combinator/filter":17,"./lib/combinator/flatMap":18,"./lib/combinator/limit":19,"./lib/combinator/loop":20,"./lib/combinator/merge":21,"./lib/combinator/mergeConcurrently":22,"./lib/combinator/observe":23,"./lib/combinator/promises":24,"./lib/combinator/sample":25,"./lib/combinator/slice":26,"./lib/combinator/switch":27,"./lib/combinator/timeslice":28,"./lib/combinator/timestamp":29,"./lib/combinator/transduce":30,"./lib/combinator/transform":31,"./lib/combinator/zip":32,"./lib/source/core":56,"./lib/source/create":57,"./lib/source/from":58,"./lib/source/fromEvent":60,"./lib/source/generate":62,"./lib/source/iterate":63,"./lib/source/periodic":64,"./lib/source/unfold":66,"@most/multicast":2}],68:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -5501,7 +5277,73 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],70:[function(require,module,exports){
+},{}],69:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _most = require('most');
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/* global requestAnimationFrame, cancelAnimationFrame */
+
+exports.default = function () {
+  return new _most.Stream(new AnimationFramesSource());
+};
+
+var recurse = function recurse(cancel, schedule) {
+  return function (sink, scheduler) {
+    var cancel = new Cancel();
+    var onNext = function onNext(x) {
+      sink.event(scheduler.now(), x);
+      cancel.key = schedule(onNext);
+    };
+    cancel.key = schedule(onNext);
+
+    return cancel;
+  };
+};
+
+var animationFrames = recurse(cancelAnimationFrame, requestAnimationFrame);
+
+var AnimationFramesSource = function () {
+  function AnimationFramesSource() {
+    _classCallCheck(this, AnimationFramesSource);
+  }
+
+  _createClass(AnimationFramesSource, [{
+    key: 'run',
+    value: function run(sink, scheduler) {
+      return animationFrames(sink, scheduler);
+    }
+  }]);
+
+  return AnimationFramesSource;
+}();
+
+var Cancel = function () {
+  function Cancel(key) {
+    _classCallCheck(this, Cancel);
+
+    this.key;
+  }
+
+  _createClass(Cancel, [{
+    key: 'dispose',
+    value: function dispose() {
+      cancelAnimationFrame(this.key);
+    }
+  }]);
+
+  return Cancel;
+}();
+
+},{"most":67}],70:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -5528,7 +5370,7 @@ var Constant = function () {
   _createClass(Constant, [{
     key: "next",
     value: function next(t) {
-      return this;
+      return this.value;
     }
   }]);
 
@@ -5536,14 +5378,13 @@ var Constant = function () {
 }();
 
 var map = exports.map = function map(f, behavior) {
-  return new Map(f(behavior.value), f, behavior);
+  return new Map(f, behavior);
 };
 
 var Map = function () {
-  function Map(value, f, behavior) {
+  function Map(f, behavior) {
     _classCallCheck(this, Map);
 
-    this.value = value;
     this.f = f;
     this.behavior = behavior;
   }
@@ -5551,7 +5392,8 @@ var Map = function () {
   _createClass(Map, [{
     key: "next",
     value: function next(t) {
-      return map(this.f, this.behavior.next(t));
+      var f = this.f;
+      return f(this.behavior.next(t));
     }
   }]);
 
@@ -5559,17 +5401,16 @@ var Map = function () {
 }();
 
 var liftA2 = exports.liftA2 = function liftA2(f, b1, b2) {
-  return new LiftA2(f(b1.value, b2.value), f, b1, b2);
+  return new LiftA2(f, b1, b2);
 };
 var ap = exports.ap = function ap(bf, bx) {
   return liftA2(apply, bf, bx);
 };
 
 var LiftA2 = function () {
-  function LiftA2(value, f, b1, b2) {
+  function LiftA2(f, b1, b2) {
     _classCallCheck(this, LiftA2);
 
-    this.value = value;
     this.f = f;
     this.b1 = b1;
     this.b2 = b2;
@@ -5578,7 +5419,8 @@ var LiftA2 = function () {
   _createClass(LiftA2, [{
     key: "next",
     value: function next(t) {
-      return liftA2(this.f, this.b1.next(t), this.b2.next(t));
+      var f = this.f;
+      return f(this.b1.next(t), this.b2.next(t));
     }
   }]);
 
@@ -5609,8 +5451,9 @@ var Integral = function () {
       var wn = this.w.next(t);
       var bn = this.behavior.next(t);
       var f = this.f;
-      var value = f(wn.value, this.value, bn.value, t - this.t0);
-      return runIntegralWith(f, wn, value, bn, t);
+      this.value = f(wn, this.value, bn, t - this.t0);
+      this.t0 = t;
+      return this.value;
     }
   }]);
 
@@ -5618,21 +5461,90 @@ var Integral = function () {
 }();
 
 var sample = exports.sample = function sample(behavior, stream) {
-  return stream.timestamp().scan(stepSample, behavior).map(toValue);
+  return stream.timestamp().loop(stepSample, behavior);
 };
 
 var stepSample = function stepSample(behavior, _ref) {
   var time = _ref.time;
-  return behavior.next(time);
-};
-var toValue = function toValue(_ref2) {
-  var value = _ref2.value;
-  return value;
+  return { seed: behavior, value: behavior.next(time) };
 };
 
 var apply = function apply(f, x) {
   return f(x);
 };
+
+// /** @license MIT License (c) copyright 2016 original author or authors */
+//
+// export const constant = x => new Constant(x)
+//
+// class Constant {
+//   constructor (value) {
+//     this.value = value
+//   }
+//
+//   next (t) {
+//     return this
+//   }
+// }
+//
+// export const map = (f, behavior) => new Map(f(behavior.value), f, behavior)
+//
+// class Map {
+//   constructor (value, f, behavior) {
+//     this.value = value
+//     this.f = f
+//     this.behavior = behavior
+//   }
+//
+//   next (t) {
+//     return map(this.f, this.behavior.next(t))
+//   }
+// }
+//
+// export const liftA2 = (f, b1, b2) => new LiftA2(f(b1.value, b2.value), f, b1, b2)
+// export const ap = (bf, bx) => liftA2(apply, bf, bx)
+//
+// class LiftA2 {
+//   constructor (value, f, b1, b2) {
+//     this.value = value
+//     this.f = f
+//     this.b1 = b1
+//     this.b2 = b2
+//   }
+//
+//   next (t) {
+//     return liftA2(this.f, this.b1.next(t), this.b2.next(t))
+//   }
+// }
+//
+// export const integralWith = (f, w, a, behavior) => runIntegralWith(f, w, a, behavior, 0)
+// const runIntegralWith = (f, w, a, behavior, t) => new Integral(a, f, w, behavior, t)
+//
+// class Integral {
+//   constructor (value, f, w, behavior, t0) {
+//     this.value = value
+//     this.f = f
+//     this.w = w
+//     this.behavior = behavior
+//     this.t0 = t0
+//   }
+//
+//   next (t) {
+//     const wn = this.w.next(t)
+//     const bn = this.behavior.next(t)
+//     const f = this.f
+//     const value = f(wn.value, this.value, bn.value, t - this.t0)
+//     return runIntegralWith(f, wn, value, bn, t)
+//   }
+// }
+//
+// export const sample = (behavior, stream) =>
+//   stream.timestamp().scan(stepSample, behavior).map(toValue)
+//
+// const stepSample = (behavior, { time }) => behavior.next(time)
+// const toValue = ({ value }) => value
+//
+// const apply = (f, x) => f(x)
 
 },{}],71:[function(require,module,exports){
 'use strict';
@@ -5688,4 +5600,4 @@ var liftA2 = exports.liftA2 = (0, _prelude.curry3)(B.liftA2);
 var sample = exports.sample = (0, _prelude.curry2)(B.sample);
 var integralWith = exports.integralWith = B.integralWith;
 
-},{"./behavior":70,"./dom":71,"@most/prelude":4}]},{},[1]);
+},{"./behavior":70,"./dom":71,"@most/prelude":3}]},{},[1]);

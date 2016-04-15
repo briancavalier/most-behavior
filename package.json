@@ -7,7 +7,8 @@
     "dist/behavior.js"
   ],
   "scripts": {
-    "build:add-inputs": "browserify examples/add-inputs/main.js -t babelify --outfile examples/add-inputs/app.js",
+    "build:add-inputs": "browserify examples/add-inputs/index.js -t babelify --outfile examples/add-inputs/app.js",
+    "build:bounce": "browserify examples/bounce/index.js -t babelify --outfile examples/bounce/app.js",
     "build-dist": "mkdir -p dist && rollup src/index.js | babel --presets es2015 --plugins transform-es2015-modules-umd --module-id '@most/behavior' -o dist/behavior.js",
     "build": "npm run build-dist && uglifyjs dist/behavior.js -o dist/behavior.min.js",
     "prepublish": "npm run build",
