@@ -137,7 +137,7 @@ var dots = function dots(n) {
   return (0, _index.sample)(world, rate);
 };
 
-(0, _most.observe)(updateDots, dots(1000));
+(0, _most.observe)(updateDots, dots(200));
 
 },{"../../src/animationFrames":69,"../../src/index":72,"most":67}],2:[function(require,module,exports){
 (function (global, factory) {
@@ -5298,14 +5298,14 @@ exports.default = function () {
 
 var recurse = function recurse(cancel, schedule) {
   return function (sink, scheduler) {
-    var cancel = new Cancel();
+    var canceler = new Cancel(cancel);
     var onNext = function onNext(x) {
       sink.event(scheduler.now(), x);
       cancel.key = schedule(onNext);
     };
     cancel.key = schedule(onNext);
 
-    return cancel;
+    return canceler;
   };
 };
 
@@ -5327,16 +5327,17 @@ var AnimationFramesSource = function () {
 }();
 
 var Cancel = function () {
-  function Cancel(key) {
+  function Cancel(cancel) {
     _classCallCheck(this, Cancel);
 
-    this.key;
+    this.cancel = cancel;
+    this.key = undefined;
   }
 
   _createClass(Cancel, [{
     key: 'dispose',
     value: function dispose() {
-      cancelAnimationFrame(this.key);
+      this.cancel(this.key);
     }
   }]);
 
@@ -5370,7 +5371,7 @@ var Constant = function () {
   _createClass(Constant, [{
     key: "next",
     value: function next(t) {
-      return this.value;
+      return this;
     }
   }]);
 
@@ -5378,13 +5379,14 @@ var Constant = function () {
 }();
 
 var map = exports.map = function map(f, behavior) {
-  return new Map(f, behavior);
+  return new Map(f(behavior.value), f, behavior);
 };
 
 var Map = function () {
-  function Map(f, behavior) {
+  function Map(value, f, behavior) {
     _classCallCheck(this, Map);
 
+    this.value = value;
     this.f = f;
     this.behavior = behavior;
   }
@@ -5392,8 +5394,7 @@ var Map = function () {
   _createClass(Map, [{
     key: "next",
     value: function next(t) {
-      var f = this.f;
-      return f(this.behavior.next(t));
+      return map(this.f, this.behavior.next(t));
     }
   }]);
 
@@ -5401,16 +5402,17 @@ var Map = function () {
 }();
 
 var liftA2 = exports.liftA2 = function liftA2(f, b1, b2) {
-  return new LiftA2(f, b1, b2);
+  return new LiftA2(f(b1.value, b2.value), f, b1, b2);
 };
 var ap = exports.ap = function ap(bf, bx) {
   return liftA2(apply, bf, bx);
 };
 
 var LiftA2 = function () {
-  function LiftA2(f, b1, b2) {
+  function LiftA2(value, f, b1, b2) {
     _classCallCheck(this, LiftA2);
 
+    this.value = value;
     this.f = f;
     this.b1 = b1;
     this.b2 = b2;
@@ -5419,8 +5421,7 @@ var LiftA2 = function () {
   _createClass(LiftA2, [{
     key: "next",
     value: function next(t) {
-      var f = this.f;
-      return f(this.b1.next(t), this.b2.next(t));
+      return liftA2(this.f, this.b1.next(t), this.b2.next(t));
     }
   }]);
 
@@ -5451,9 +5452,8 @@ var Integral = function () {
       var wn = this.w.next(t);
       var bn = this.behavior.next(t);
       var f = this.f;
-      this.value = f(wn, this.value, bn, t - this.t0);
-      this.t0 = t;
-      return this.value;
+      var value = f(wn.value, this.value, bn.value, t - this.t0);
+      return runIntegralWith(f, wn, value, bn, t);
     }
   }]);
 
@@ -5461,90 +5461,21 @@ var Integral = function () {
 }();
 
 var sample = exports.sample = function sample(behavior, stream) {
-  return stream.timestamp().loop(stepSample, behavior);
+  return stream.timestamp().scan(stepSample, behavior).map(toValue);
 };
 
 var stepSample = function stepSample(behavior, _ref) {
   var time = _ref.time;
-  return { seed: behavior, value: behavior.next(time) };
+  return behavior.next(time);
+};
+var toValue = function toValue(_ref2) {
+  var value = _ref2.value;
+  return value;
 };
 
 var apply = function apply(f, x) {
   return f(x);
 };
-
-// /** @license MIT License (c) copyright 2016 original author or authors */
-//
-// export const constant = x => new Constant(x)
-//
-// class Constant {
-//   constructor (value) {
-//     this.value = value
-//   }
-//
-//   next (t) {
-//     return this
-//   }
-// }
-//
-// export const map = (f, behavior) => new Map(f(behavior.value), f, behavior)
-//
-// class Map {
-//   constructor (value, f, behavior) {
-//     this.value = value
-//     this.f = f
-//     this.behavior = behavior
-//   }
-//
-//   next (t) {
-//     return map(this.f, this.behavior.next(t))
-//   }
-// }
-//
-// export const liftA2 = (f, b1, b2) => new LiftA2(f(b1.value, b2.value), f, b1, b2)
-// export const ap = (bf, bx) => liftA2(apply, bf, bx)
-//
-// class LiftA2 {
-//   constructor (value, f, b1, b2) {
-//     this.value = value
-//     this.f = f
-//     this.b1 = b1
-//     this.b2 = b2
-//   }
-//
-//   next (t) {
-//     return liftA2(this.f, this.b1.next(t), this.b2.next(t))
-//   }
-// }
-//
-// export const integralWith = (f, w, a, behavior) => runIntegralWith(f, w, a, behavior, 0)
-// const runIntegralWith = (f, w, a, behavior, t) => new Integral(a, f, w, behavior, t)
-//
-// class Integral {
-//   constructor (value, f, w, behavior, t0) {
-//     this.value = value
-//     this.f = f
-//     this.w = w
-//     this.behavior = behavior
-//     this.t0 = t0
-//   }
-//
-//   next (t) {
-//     const wn = this.w.next(t)
-//     const bn = this.behavior.next(t)
-//     const f = this.f
-//     const value = f(wn.value, this.value, bn.value, t - this.t0)
-//     return runIntegralWith(f, wn, value, bn, t)
-//   }
-// }
-//
-// export const sample = (behavior, stream) =>
-//   stream.timestamp().scan(stepSample, behavior).map(toValue)
-//
-// const stepSample = (behavior, { time }) => behavior.next(time)
-// const toValue = ({ value }) => value
-//
-// const apply = (f, x) => f(x)
 
 },{}],71:[function(require,module,exports){
 'use strict';

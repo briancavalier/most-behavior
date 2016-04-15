@@ -104,4 +104,4 @@ const dots = n => {
   return sample(world, rate)
 }
 
-observe(updateDots, dots(1000))
+observe(updateDots, dots(200))

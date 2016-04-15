@@ -4,14 +4,14 @@ import { Stream } from 'most'
 export default () => new Stream(new AnimationFramesSource())
 
 const recurse = (cancel, schedule) => (sink, scheduler) => {
-  let cancel = new Cancel()
+  let canceler = new Cancel(cancel)
   const onNext = x => {
     sink.event(scheduler.now(), x)
     cancel.key = schedule(onNext)
   }
   cancel.key = schedule(onNext)
 
-  return cancel
+  return canceler
 }
 
 const animationFrames = recurse(cancelAnimationFrame, requestAnimationFrame)
@@ -23,10 +23,11 @@ class AnimationFramesSource {
 }
 
 class Cancel {
-  constructor (key) {
-    this.key
+  constructor (cancel) {
+    this.cancel = cancel
+    this.key = undefined
   }
   dispose () {
-    cancelAnimationFrame(this.key)
+    this.cancel(this.key)
   }
 }
