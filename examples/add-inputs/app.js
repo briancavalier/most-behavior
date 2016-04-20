@@ -5512,126 +5512,175 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-/** @license MIT License (c) copyright 2016 original author or authors */
+// Conceptually:
+// type Behavior t a = t -> (a, Behavior t a)
 
+// constant :: a -> Behavior t a
 var constant = exports.constant = function constant(x) {
   return new Constant(x);
 };
 
+// map :: (a -> b) -> Behavior t a -> Behavior t b
+var map = exports.map = function map(f, s) {
+  return s.map(f);
+};
+
+// liftA2 :: (a -> b -> c) -> Behavior t a -> Behavior t b -> Behavior t c
+var liftA2 = exports.liftA2 = function liftA2(f, s1, s2) {
+  return s1.liftA2(f, s2);
+};
+
+// ap :: Behavior t (a -> b) -> Behavior t a -> Behavior t b
+var ap = exports.ap = function ap(bf, ba) {
+  return liftA2(apply, bf, ba);
+};
+
+// liftA3 :: (a -> b -> c -> d) -> Behavior t a -> Behavior t b -> Behavior t c -> Behavior t d
+var liftA3 = exports.liftA3 = function liftA3(f, s1, s2, s3) {
+  return s1.liftA3(f, s2, s3);
+};
+
+// A time-varying value
+
+var Behavior = exports.Behavior = function () {
+  function Behavior(runBehavior) {
+    _classCallCheck(this, Behavior);
+
+    this._runBehavior = runBehavior;
+    this._value = void 0;
+  }
+
+  _createClass(Behavior, [{
+    key: "runBehavior",
+    value: function runBehavior(t) {
+      return this._value === void 0 ? this._value = this._runBehavior(t) : this._value;
+    }
+  }, {
+    key: "map",
+    value: function map(f) {
+      var _this = this;
+
+      return new Behavior(function (t) {
+        return mapB(f, _this.runBehavior(t));
+      });
+    }
+  }, {
+    key: "ap",
+    value: function ap(xs) {
+      return this.liftA2(apply, xs);
+    }
+  }, {
+    key: "liftA2",
+    value: function liftA2(f, b) {
+      var _this2 = this;
+
+      return new Behavior(function (t) {
+        return liftA2B(f, _this2.runBehavior(t), b.runBehavior(t));
+      });
+    }
+  }, {
+    key: "liftA3",
+    value: function liftA3(f, b, c) {
+      var _this3 = this;
+
+      return new Behavior(function (t) {
+        return liftA3B(f, _this3.runBehavior(t), b.runBehavior(t), c.runBehavior(t));
+      });
+    }
+  }]);
+
+  return Behavior;
+}();
+
+// A Behavior whose value doesn't vary
+
+
 var Constant = function () {
-  function Constant(value) {
+  function Constant(x) {
     _classCallCheck(this, Constant);
 
-    this.value = value;
+    this.value = x;
+    this.next = this;
   }
 
   _createClass(Constant, [{
-    key: "next",
-    value: function next(t) {
+    key: "runBehavior",
+    value: function runBehavior(t) {
       return this;
+    }
+  }, {
+    key: "map",
+    value: function map(f) {
+      var _this4 = this;
+
+      return new Behavior(function (t) {
+        return mapB(f, _this4);
+      });
+    }
+  }, {
+    key: "ap",
+    value: function ap(xs) {
+      return xs.map(this.value);
+    }
+  }, {
+    key: "liftA2",
+    value: function liftA2(f, b) {
+      var _this5 = this;
+
+      return b.map(function (b) {
+        return f(_this5.value, b);
+      });
+    }
+  }, {
+    key: "liftA3",
+    value: function liftA3(f, b, c) {
+      var _this6 = this;
+
+      return b.liftA2(function (b, c) {
+        return f(_this6.value, b, c);
+      }, c);
     }
   }]);
 
   return Constant;
 }();
 
-var map = exports.map = function map(f, behavior) {
-  return new Map(f(behavior.value), f, behavior);
+var Step = exports.Step = function Step(value, next) {
+  _classCallCheck(this, Step);
+
+  this.value = value;
+  this.next = next;
 };
 
-var Map = function () {
-  function Map(value, f, behavior) {
-    _classCallCheck(this, Map);
+// Internal helpers
 
-    this.value = value;
-    this.f = f;
-    this.behavior = behavior;
-  }
 
-  _createClass(Map, [{
-    key: "next",
-    value: function next(t) {
-      return map(this.f, this.behavior.next(t));
-    }
-  }]);
-
-  return Map;
-}();
-
-var liftA2 = exports.liftA2 = function liftA2(f, b1, b2) {
-  return new LiftA2(f(b1.value, b2.value), f, b1, b2);
-};
-var ap = exports.ap = function ap(bf, bx) {
-  return liftA2(apply, bf, bx);
+var mapB = function mapB(f, _ref) {
+  var value = _ref.value;
+  var next = _ref.next;
+  return new Step(f(value), next.map(f));
 };
 
-var LiftA2 = function () {
-  function LiftA2(value, f, b1, b2) {
-    _classCallCheck(this, LiftA2);
-
-    this.value = value;
-    this.f = f;
-    this.b1 = b1;
-    this.b2 = b2;
-  }
-
-  _createClass(LiftA2, [{
-    key: "next",
-    value: function next(t) {
-      return liftA2(this.f, this.b1.next(t), this.b2.next(t));
-    }
-  }]);
-
-  return LiftA2;
-}();
-
-var integralWith = exports.integralWith = function integralWith(f, w, a, behavior) {
-  return runIntegralWith(f, w, a, behavior, 0);
-};
-var runIntegralWith = function runIntegralWith(f, w, a, behavior, t) {
-  return new Integral(a, f, w, behavior, t);
-};
-
-var Integral = function () {
-  function Integral(value, f, w, behavior, t0) {
-    _classCallCheck(this, Integral);
-
-    this.value = value;
-    this.f = f;
-    this.w = w;
-    this.behavior = behavior;
-    this.t0 = t0;
-  }
-
-  _createClass(Integral, [{
-    key: "next",
-    value: function next(t) {
-      var wn = this.w.next(t);
-      var bn = this.behavior.next(t);
-      var f = this.f;
-      var value = f(wn.value, this.value, bn.value, t - this.t0);
-      return runIntegralWith(f, wn, value, bn, t);
-    }
-  }]);
-
-  return Integral;
-}();
-
-var sample = exports.sample = function sample(behavior, stream) {
-  return stream.timestamp().scan(stepSample, behavior).map(toValue);
-};
-
-var stepSample = function stepSample(behavior, _ref) {
-  var time = _ref.time;
-  return behavior.next(time);
-};
-var toValue = function toValue(_ref2) {
-  var value = _ref2.value;
-  return value;
+var liftA2B = function liftA2B(f, _ref2, _ref3) {
+  var v1 = _ref2.value;
+  var n1 = _ref2.next;
+  var v2 = _ref3.value;
+  var n2 = _ref3.next;
+  return new Step(f(v1, v2), liftA2(f, n1, n2));
 };
 
 var apply = function apply(f, x) {
   return f(x);
+};
+
+var liftA3B = function liftA3B(f, _ref4, _ref5, _ref6) {
+  var v1 = _ref4.value;
+  var n1 = _ref4.next;
+  var v2 = _ref5.value;
+  var n2 = _ref5.next;
+  var v3 = _ref6.value;
+  var n3 = _ref6.next;
+  return new Step(f(v1, v2, v3), liftA3(f, n1, n2, n3));
 };
 
 },{}],71:[function(require,module,exports){
@@ -5642,7 +5691,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.inputValue = undefined;
 
-var _behavior = require('./behavior');
+var _behavior = require('./behavior2');
 
 var inputValue = exports.inputValue = function inputValue(input) {
   return (0, _behavior.map)(getValue, (0, _behavior.constant)(input));
@@ -5652,13 +5701,13 @@ var getValue = function getValue(input) {
   return input.value;
 };
 
-},{"./behavior":70}],72:[function(require,module,exports){
+},{"./behavior2":70}],72:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.integralWith = exports.sample = exports.liftA2 = exports.ap = exports.map = exports.constant = undefined;
+exports.sampleE = exports.sample = exports.integralWith = exports.integral = exports.liftA3 = exports.liftA2 = exports.ap = exports.map = exports.constant = undefined;
 
 var _dom = require('./dom');
 
@@ -5674,18 +5723,118 @@ Object.keys(_dom).forEach(function (key) {
 
 var _prelude = require('@most/prelude');
 
-var _behavior = require('./behavior');
+var _behavior = require('./behavior2');
 
 var B = _interopRequireWildcard(_behavior);
 
+var _sample = require('./sample');
+
+var S = _interopRequireWildcard(_sample);
+
+var _integral = require('./integral2');
+
+var I = _interopRequireWildcard(_integral);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
-var constant = exports.constant = B.constant; /** @license MIT License (c) copyright 2016 original author or authors */
+var constant = exports.constant = B.constant; // TODO: Move this somewhere else (@most/dom-behavior?)
+
+/** @license MIT License (c) copyright 2016 original author or authors */
 
 var map = exports.map = (0, _prelude.curry2)(B.map);
 var ap = exports.ap = (0, _prelude.curry2)(B.ap);
 var liftA2 = exports.liftA2 = (0, _prelude.curry3)(B.liftA2);
-var sample = exports.sample = (0, _prelude.curry2)(B.sample);
-var integralWith = exports.integralWith = B.integralWith;
+var liftA3 = exports.liftA3 = B.liftA3; // TODO: Need curry4
 
-},{"./behavior":70,"./dom":71,"@most/prelude":4}]},{},[1]);
+var integral = exports.integral = (0, _prelude.curry3)(I.integral);
+var integralWith = exports.integralWith = I.integralWith; // TODO: Need curry4
+
+var sample = exports.sample = (0, _prelude.curry2)(S.sample);
+var sampleE = exports.sampleE = (0, _prelude.curry3)(S.sampleE);
+
+},{"./behavior2":70,"./dom":71,"./integral2":73,"./sample":74,"@most/prelude":4}],73:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.integralWith = exports.integral = undefined;
+
+var _behavior = require('./behavior2');
+
+// Euler integration
+// integral :: (a -> b -> dt -> a) -> a -> Behavior t b -> Behavior t a
+var integral = exports.integral = function integral(f, a, s) {
+  return new _behavior.Behavior(function (t) {
+    return new _behavior.Step(a, runIntegral(f, a, s, t));
+  });
+};
+
+var runIntegral = function runIntegral(f, a0, s, t0) {
+  return new _behavior.Behavior(function (t) {
+    return step(f, a0, s.runBehavior(t), t, t0);
+  });
+};
+
+var step = function step(f, a0, sv, t, t0) {
+  var a = f(a0, sv.value, t - t0);
+  return new _behavior.Step(a, runIntegral(f, a, sv.next, t));
+};
+
+// Euler integration with extra reference data w
+// integralWith :: (w -> a -> b -> dt -> a) -> a -> Behavior t w -> Behavior t b -> Behavior t a
+var integralWith = exports.integralWith = function integralWith(f, w, a, s) {
+  return new _behavior.Behavior(function (t) {
+    return new _behavior.Step(a, runIntegralWith(f, w, a, s, t));
+  });
+};
+
+var runIntegralWith = function runIntegralWith(f, w, a0, s, t0) {
+  return new _behavior.Behavior(function (t) {
+    return stepWith(f, w.runBehavior(t), a0, s.runBehavior(t), t, t0);
+  });
+};
+
+var stepWith = function stepWith(f, w, a0, sv, t, t0) {
+  var a = f(w.value, a0, sv.value, t - t0);
+  return new _behavior.Step(a, runIntegralWith(f, w.next, a, sv.next, t));
+};
+
+},{"./behavior2":70}],74:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/** @license MIT License (c) copyright 2016 original author or authors */
+
+var sample = exports.sample = function sample(behavior, stream) {
+  return stream.timestamp().loop(stepSample, behavior);
+};
+
+var stepSample = function stepSample(behavior, _ref) {
+  var time = _ref.time;
+
+  var _behavior$runBehavior = behavior.runBehavior(time);
+
+  var value = _behavior$runBehavior.value;
+  var next = _behavior$runBehavior.next;
+
+  return { seed: next, value: value };
+};
+
+var sampleE = exports.sampleE = function sampleE(f, behavior, stream) {
+  return stream.timestamp().loop(stepSampleE, { f: f, behavior: behavior });
+};
+
+var stepSampleE = function stepSampleE(_ref2, _ref3) {
+  var f = _ref2.f;
+  var behavior = _ref2.behavior;
+  var value = _ref3.value;
+  var time = _ref3.time;
+
+  var step = behavior.runBehavior(time);
+  return { seed: { f: f, behavior: step.next }, value: f(step.value, value) };
+};
+
+},{}]},{},[1]);

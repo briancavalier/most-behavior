@@ -1,4 +1,5 @@
 import { Stream } from 'most'
+
 /* global requestAnimationFrame, cancelAnimationFrame */
 
 export default () => new Stream(new AnimationFramesSource())

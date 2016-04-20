@@ -79,7 +79,6 @@ const moveDot = (dot, speed, { x1, x2, y1, y2 }, vel, dt) => { // eslint-disable
 }
 
 const updateDots = ({ dots, pos }) => {
-  console.log(dots, pos)
   for (let i = 0, p; i < dots.length; ++i) {
     p = pos[i]
     dots[i].style.transform = `translate3d(${p.x}px,${p.y}px,0)`

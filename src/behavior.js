@@ -1,72 +1,93 @@
 /** @license MIT License (c) copyright 2016 original author or authors */
+// Conceptually:
+// type Behavior t a = t -> (a, Behavior t a)
 
+// constant :: a -> Behavior t a
 export const constant = x => new Constant(x)
 
-class Constant {
-  constructor (value) {
-    this.value = value
+// map :: (a -> b) -> Behavior t a -> Behavior t b
+export const map = (f, s) => s.map(f)
+
+// liftA2 :: (a -> b -> c) -> Behavior t a -> Behavior t b -> Behavior t c
+export const liftA2 = (f, s1, s2) => s1.liftA2(f, s2)
+
+// ap :: Behavior t (a -> b) -> Behavior t a -> Behavior t b
+export const ap = (bf, ba) => liftA2(apply, bf, ba)
+
+// liftA3 :: (a -> b -> c -> d) -> Behavior t a -> Behavior t b -> Behavior t c -> Behavior t d
+export const liftA3 = (f, s1, s2, s3) => s1.liftA3(f, s2, s3)
+
+// A time-varying value
+export class Behavior {
+  constructor (runBehavior) {
+    this._runBehavior = runBehavior
+    this._value = void 0
   }
 
-  next (t) {
+  runBehavior (t) {
+    return this._value === void 0
+      ? this._value = this._runBehavior(t) : this._value
+  }
+
+  map (f) {
+    return new Behavior(t => mapB(f, this.runBehavior(t)))
+  }
+
+  ap (xs) {
+    return this.liftA2(apply, xs)
+  }
+
+  liftA2 (f, b) {
+    return new Behavior(t => liftA2B(f, this.runBehavior(t), b.runBehavior(t)))
+  }
+
+  liftA3 (f, b, c) {
+    return new Behavior(t => liftA3B(f, this.runBehavior(t), b.runBehavior(t), c.runBehavior(t)))
+  }
+}
+
+// A Behavior whose value doesn't vary
+class Constant {
+  constructor (x) {
+    this.value = x
+    this.next = this
+  }
+
+  runBehavior (t) {
     return this
   }
+
+  map (f) {
+    return new Behavior(t => mapB(f, this))
+  }
+
+  ap (xs) {
+    return xs.map(this.value)
+  }
+
+  liftA2 (f, b) {
+    return b.map(b => f(this.value, b))
+  }
+
+  liftA3 (f, b, c) {
+    return b.liftA2((b, c) => f(this.value, b, c), c)
+  }
 }
 
-export const map = (f, behavior) => new Map(f(behavior.value), f, behavior)
-
-class Map {
-  constructor (value, f, behavior) {
+export class Step {
+  constructor (value, next) {
     this.value = value
-    this.f = f
-    this.behavior = behavior
-  }
-
-  next (t) {
-    return map(this.f, this.behavior.next(t))
+    this.next = next
   }
 }
 
-export const liftA2 = (f, b1, b2) => new LiftA2(f(b1.value, b2.value), f, b1, b2)
-export const ap = (bf, bx) => liftA2(apply, bf, bx)
+// Internal helpers
+const mapB = (f, { value, next }) => new Step(f(value), next.map(f))
 
-class LiftA2 {
-  constructor (value, f, b1, b2) {
-    this.value = value
-    this.f = f
-    this.b1 = b1
-    this.b2 = b2
-  }
-
-  next (t) {
-    return liftA2(this.f, this.b1.next(t), this.b2.next(t))
-  }
-}
-
-export const integralWith = (f, w, a, behavior) => runIntegralWith(f, w, a, behavior, 0)
-const runIntegralWith = (f, w, a, behavior, t) => new Integral(a, f, w, behavior, t)
-
-class Integral {
-  constructor (value, f, w, behavior, t0) {
-    this.value = value
-    this.f = f
-    this.w = w
-    this.behavior = behavior
-    this.t0 = t0
-  }
-
-  next (t) {
-    const wn = this.w.next(t)
-    const bn = this.behavior.next(t)
-    const f = this.f
-    const value = f(wn.value, this.value, bn.value, t - this.t0)
-    return runIntegralWith(f, wn, value, bn, t)
-  }
-}
-
-export const sample = (behavior, stream) =>
-  stream.timestamp().scan(stepSample, behavior).map(toValue)
-
-const stepSample = (behavior, { time }) => behavior.next(time)
-const toValue = ({ value }) => value
+const liftA2B = (f, { value: v1, next: n1 }, { value: v2, next: n2 }) =>
+  new Step(f(v1, v2), liftA2(f, n1, n2))
 
 const apply = (f, x) => f(x)
+
+const liftA3B = (f, { value: v1, next: n1 }, { value: v2, next: n2 }, { value: v3, next: n3 }) =>
+  new Step(f(v1, v2, v3), liftA3(f, n1, n2, n3))
