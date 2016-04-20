@@ -21,12 +21,16 @@ export const liftA3 = (f, s1, s2, s3) => s1.liftA3(f, s2, s3)
 export class Behavior {
   constructor (runBehavior) {
     this._runBehavior = runBehavior
-    this._value = void 0
+    this._value = undefined
+    this._time = -1
   }
 
   runBehavior (t) {
-    return this._value === void 0
-      ? this._value = this._runBehavior(t) : this._value
+    if(t > this._time) {
+      this._time = t
+      this._value = this._runBehavior(t)
+    }
+    return this._value
   }
 
   map (f) {

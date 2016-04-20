@@ -5390,13 +5390,18 @@ var Behavior = exports.Behavior = function () {
     _classCallCheck(this, Behavior);
 
     this._runBehavior = runBehavior;
-    this._value = void 0;
+    this._value = undefined;
+    this._time = -1;
   }
 
   _createClass(Behavior, [{
     key: "runBehavior",
     value: function runBehavior(t) {
-      return this._value === void 0 ? this._value = this._runBehavior(t) : this._value;
+      if (t > this._time) {
+        this._time = t;
+        this._value = this._runBehavior(t);
+      }
+      return this._value;
     }
   }, {
     key: "map",
