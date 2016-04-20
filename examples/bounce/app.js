@@ -5354,6 +5354,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+/** @license MIT License (c) copyright 2016 original author or authors */
 // Conceptually:
 // type Behavior t a = t -> (a, Behavior t a)
 
@@ -5533,7 +5534,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.inputValue = undefined;
 
-var _behavior = require('./behavior2');
+var _behavior = require('./behavior');
 
 var inputValue = exports.inputValue = function inputValue(input) {
   return (0, _behavior.map)(getValue, (0, _behavior.constant)(input));
@@ -5543,7 +5544,7 @@ var getValue = function getValue(input) {
   return input.value;
 };
 
-},{"./behavior2":70}],72:[function(require,module,exports){
+},{"./behavior":70}],72:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -5565,7 +5566,7 @@ Object.keys(_dom).forEach(function (key) {
 
 var _prelude = require('@most/prelude');
 
-var _behavior = require('./behavior2');
+var _behavior = require('./behavior');
 
 var B = _interopRequireWildcard(_behavior);
 
@@ -5573,7 +5574,7 @@ var _sample = require('./sample');
 
 var S = _interopRequireWildcard(_sample);
 
-var _integral = require('./integral2');
+var _integral = require('./integral');
 
 var I = _interopRequireWildcard(_integral);
 
@@ -5594,7 +5595,7 @@ var integralWith = exports.integralWith = I.integralWith; // TODO: Need curry4
 var sample = exports.sample = (0, _prelude.curry2)(S.sample);
 var sampleE = exports.sampleE = (0, _prelude.curry3)(S.sampleE);
 
-},{"./behavior2":70,"./dom":71,"./integral2":73,"./sample":74,"@most/prelude":3}],73:[function(require,module,exports){
+},{"./behavior":70,"./dom":71,"./integral":73,"./sample":74,"@most/prelude":3}],73:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -5602,7 +5603,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.integralWith = exports.integral = undefined;
 
-var _behavior = require('./behavior2');
+var _behavior = require('./behavior');
 
 // Euler integration
 // integral :: (a -> b -> dt -> a) -> a -> Behavior t b -> Behavior t a
@@ -5610,7 +5611,7 @@ var integral = exports.integral = function integral(f, a, s) {
   return new _behavior.Behavior(function (t) {
     return new _behavior.Step(a, runIntegral(f, a, s, t));
   });
-};
+}; /** @license MIT License (c) copyright 2016 original author or authors */
 
 var runIntegral = function runIntegral(f, a0, s, t0) {
   return new _behavior.Behavior(function (t) {
@@ -5642,7 +5643,7 @@ var stepWith = function stepWith(f, w, a0, sv, t, t0) {
   return new _behavior.Step(a, runIntegralWith(f, w.next, a, sv.next, t));
 };
 
-},{"./behavior2":70}],74:[function(require,module,exports){
+},{"./behavior":70}],74:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
